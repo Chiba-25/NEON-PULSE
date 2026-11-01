@@ -1,0 +1,21 @@
+{
+  "name": "neon-pulse",
+  "version": "1.0.0",
+  "description": "Neon Pulse soundboard",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.neonpulse.soundboard",
+    "productName": "Neon Pulse",
+    "files": ["main.js", "preload.js", "index.html"],
+    "win": { "target": "portable" },
+    "portable": { "artifactName": "NeonPulse.exe" }
+  }
+}

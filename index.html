@@ -1,0 +1,1893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NEON PULSE // Web Audio Soundboard</title>
+  <style>
+    /* ==========================================================================
+       1. THEME & BASE VARIABLES
+       Easily tweak the background, surface colors, and layout sizing here.
+       ========================================================================== */
+    :root {
+      --bg-dark: #090a0f;
+      --bg-panel: #121521;
+      --bg-panel-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-primary: #00f5d4;
+      --danger: #ff2a85;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      min-height: 100vh;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(0, 245, 212, 0.07) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(255, 42, 133, 0.07) 0%, transparent 40%);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px 40px;
+      overflow-x: hidden;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ==========================================================================
+       2. HEADER & MASTER CONTROLS
+       ========================================================================== */
+    .top-bar {
+      background: var(--bg-panel);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-lg);
+      padding: 18px 22px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    .brand {
+      display: flex;
+       flex-direction: column;
+      gap: 4px;
+    }
+
+    .brand-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand h1 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #00f5d4, #7b2cbf, #ff2a85);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status-badge {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(0, 245, 212, 0.12);
+      color: #00f5d4;
+      border: 1px solid rgba(0, 245, 212, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #00f5d4;
+      box-shadow: 0 0 8px #00f5d4;
+    }
+
+    .brand p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .master-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .volume-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .volume-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .volume-value {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      min-width: 40px;
+      text-align: right;
+      color: var(--accent-primary);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 120px;
+      height: 6px;
+      background: #262b40;
+      border-radius: 999px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      box-shadow: 0 0 10px var(--accent-primary);
+      cursor: pointer;
+      transition: transform 0.12s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border: none;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      box-shadow: 0 0 10px var(--accent-primary);
+      cursor: pointer;
+    }
+
+    .btn-stop-all {
+      background: rgba(255, 42, 133, 0.14);
+      color: #ff5ca1;
+      border: 1px solid rgba(255, 42, 133, 0.45);
+      border-radius: var(--radius-md);
+      padding: 10px 18px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+
+    .btn-stop-all:hover {
+      background: rgba(255, 42, 133, 0.28);
+      box-shadow: 0 0 18px rgba(255, 42, 133, 0.45);
+      color: #ffffff;
+    }
+
+    .btn-stop-all:active {
+      transform: scale(0.96);
+    }
+
+    .stop-square {
+      width: 10px;
+      height: 10px;
+      background: currentColor;
+      border-radius: 2px;
+    }
+
+    /* ==========================================================================
+       3. SOUNDBOARD PAD GRID (12 PADS)
+       Responsive grid: 4 columns on desktop, 3 on tablet, 2 on compact phones.
+       ========================================================================== */
+    .pad-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      width: 100%;
+    }
+
+    @media (max-width: 768px) {
+      .pad-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .pad-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .top-bar {
+        padding: 14px 16px;
+      }
+      .master-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .volume-control {
+        flex: 1;
+      }
+      input[type="range"] {
+        width: 100%;
+      }
+    }
+
+    .sound-pad {
+      position: relative;
+      min-height: 135px;
+      background: linear-gradient(155deg, rgba(25, 30, 48, 0.92), rgba(14, 17, 29, 0.96));
+      border: 2px solid color-mix(in srgb, var(--pad-color) 55%, transparent);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation; /* Eliminates mobile 300ms tap delay */
+      box-shadow: 
+        0 8px 20px rgba(0, 0, 0, 0.5),
+        0 0 14px color-mix(in srgb, var(--pad-color) 18%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: 
+        transform 0.07s cubic-bezier(0.2, 0.9, 0.3, 1),
+        box-shadow 0.12s ease,
+        border-color 0.12s ease,
+        background 0.12s ease;
+      overflow: hidden;
+    }
+
+    /* Ambient top-corner neon glow inside each pad */
+    .sound-pad::before {
+      content: '';
+      position: absolute;
+      top: -30%;
+      right: -30%;
+      width: 110px;
+      height: 110px;
+      background: radial-gradient(circle, var(--pad-color) 0%, transparent 70%);
+      opacity: 0.18;
+      pointer-events: none;
+      transition: opacity 0.12s ease, transform 0.15s ease;
+    }
+
+    .sound-pad:hover {
+      border-color: var(--pad-color);
+      box-shadow: 
+        0 10px 24px rgba(0, 0, 0, 0.6),
+        0 0 22px color-mix(in srgb, var(--pad-color) 38%, transparent),
+        inset 0 0 12px color-mix(in srgb, var(--pad-color) 15%, transparent);
+    }
+
+    /* Active / Pressed state (triggered via click, touch, or keyboard shortcut) */
+    .sound-pad.is-active {
+      transform: translateY(3px) scale(0.965);
+      border-color: #ffffff;
+      background: linear-gradient(
+        155deg,
+        color-mix(in srgb, var(--pad-color) 38%, #16192b),
+        color-mix(in srgb, var(--pad-color) 18%, #0d101d)
+      );
+      box-shadow: 
+        0 2px 10px rgba(0, 0, 0, 0.5),
+        0 0 32px var(--pad-color),
+        0 0 60px color-mix(in srgb, var(--pad-color) 60%, transparent),
+        inset 0 0 22px color-mix(in srgb, var(--pad-color) 45%, transparent);
+    }
+
+    .sound-pad.is-active::before {
+      opacity: 0.55;
+      transform: scale(1.35);
+    }
+
+    .pad-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1;
+    }
+
+    .pad-key {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-main);
+      transition: all 0.1s ease;
+    }
+
+    .sound-pad.is-active .pad-key {
+      background: var(--pad-color);
+      color: #06070b;
+      border-color: #ffffff;
+      box-shadow: 0 0 12px var(--pad-color);
+    }
+
+    .pad-badges {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pad-source-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 3px 7px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+    }
+
+    .pad-source-tag.custom {
+      background: color-mix(in srgb, var(--pad-color) 25%, transparent);
+      color: #ffffff;
+      border: 1px solid var(--pad-color);
+    }
+
+    .pad-bottom {
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .pad-name {
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.25;
+      word-break: break-word;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    }
+
+    .pad-category {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .pad-led-bar {
+      height: 4px;
+      width: 100%;
+      border-radius: 999px;
+      background: var(--pad-color);
+      box-shadow: 0 0 10px var(--pad-color);
+      opacity: 0.65;
+      transition: opacity 0.12s ease, height 0.12s ease;
+    }
+
+    .sound-pad.is-active .pad-led-bar {
+      opacity: 1;
+      background: #ffffff;
+      box-shadow: 0 0 14px #ffffff, 0 0 24px var(--pad-color);
+    }
+
+    /* ==========================================================================
+       4. SETTINGS & PAD CUSTOMIZATION PANEL
+       ========================================================================== */
+    .settings-panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .settings-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 12px;
+    }
+
+    .settings-header h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .settings-header span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1.3fr 1.6fr auto;
+      gap: 14px;
+      align-items: end;
+    }
+
+    @media (max-width: 768px) {
+      .settings-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-group label {
+      font-size: 0.76rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .select-input,
+    .text-input {
+      width: 100%;
+      background: #0b0d16;
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      font-family: var(--font-sans);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .select-input:focus,
+    .text-input:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(0, 245, 212, 0.15);
+    }
+
+    .file-upload-wrapper {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .file-label-btn {
+      flex: 1;
+      background: rgba(0, 245, 212, 0.1);
+      color: var(--accent-primary);
+      border: 1px dashed rgba(0, 245, 212, 0.45);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: all 0.15s ease;
+    }
+
+    .file-label-btn:hover {
+      background: rgba(0, 245, 212, 0.18);
+      border-color: var(--accent-primary);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+
+    .btn-secondary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .settings-feedback {
+      font-size: 0.8rem;
+      color: var(--accent-primary);
+      min-height: 1.1em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .shortcut-hint {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    .shortcut-hint kbd {
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+
+    /* ==========================================================================
+       5. LIVE / BROADCAST PANEL
+       ========================================================================== */
+    .share-grid {
+      display: grid;
+      grid-template-columns: 1.6fr auto 1fr 1fr;
+      gap: 14px;
+      align-items: end;
+    }
+    @media (max-width: 900px) { .share-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 520px) { .share-grid { grid-template-columns: 1fr; } }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #0b0d16;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-row input { accent-color: var(--accent-primary); width: 16px; height: 16px; cursor: pointer; }
+
+    .btn-primary {
+      background: rgba(0, 245, 212, 0.12);
+      color: var(--accent-primary);
+      border: 1px solid rgba(0, 245, 212, 0.5);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .btn-primary:hover { background: rgba(0, 245, 212, 0.22); box-shadow: 0 0 14px rgba(0, 245, 212, 0.3); }
+
+    .share-help {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+    }
+    .share-help ol { margin-left: 18px; }
+    .share-help b { color: var(--text-main); }
+
+    .popout-note {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 28px 16px;
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      border-radius: var(--radius-lg);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .pip-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <main class="app-container">
+    <!-- HEADER & MASTER CONTROLS -->
+    <header class="top-bar">
+      <div class="brand">
+        <div class="brand-title-row">
+          <h1>Neon Pulse</h1>
+          <span class="status-badge" id="audioStatusBadge">
+            <span class="status-dot"></span>
+            <span id="audioStatusText">Ready</span>
+          </span>
+        </div>
+        <p>12-Pad Web Audio Synthesizer &amp; Custom Sampler</p>
+      </div>
+
+      <div class="master-controls">
+        <div class="volume-control">
+          <label for="masterVolume" class="volume-label">Volume</label>
+          <input
+            type="range"
+            id="masterVolume"
+            min="0"
+            max="100"
+            value="85"
+            aria-label="Master Volume"
+          />
+          <span class="volume-value" id="volumeValue">85%</span>
+        </div>
+
+        <button type="button" class="btn-stop-all" id="stopAllBtn" title="Stop all playing sounds">
+          <span class="stop-square"></span>
+          Stop All
+        </button>
+      </div>
+    </header>
+
+    <!-- 12 NEON PADS GRID -->
+    <section class="pad-grid" id="padGrid" aria-label="Soundboard Pads"></section>
+
+    <!-- CUSTOMIZE PAD SETTINGS AREA -->
+    <section class="settings-panel" aria-label="Pad Customization Settings">
+      <div class="settings-header">
+        <h2>Customize Pad &amp; Load Audio</h2>
+        <span>Session memory enabled (custom sounds &amp; names stay active while open)</span>
+      </div>
+
+      <div class="settings-grid">
+        <!-- Select which pad to edit -->
+        <div class="field-group">
+          <label for="padSelect">Select Pad</label>
+          <select id="padSelect" class="select-input"></select>
+        </div>
+
+        <!-- Rename the selected pad -->
+        <div class="field-group">
+          <label for="padNameInput">Pad Label</label>
+          <input
+            type="text"
+            id="padNameInput"
+            class="text-input"
+            maxlength="24"
+            placeholder="Enter pad name..."
+          />
+        </div>
+
+        <!-- Upload custom MP3/WAV for selected pad -->
+        <div class="field-group">
+          <label for="padAudioInput">Custom Sound (MP3 / WAV)</label>
+          <div class="file-upload-wrapper">
+            <label for="padAudioInput" class="file-label-btn" id="fileLabelText">
+              Upload Audio File...
+            </label>
+            <input
+              type="file"
+              id="padAudioInput"
+              accept="audio/mp3,audio/mpeg,audio/wav,audio/x-wav,audio/ogg,audio/*"
+            />
+          </div>
+        </div>
+
+        <!-- Reset selected pad back to default synth sound -->
+        <div class="field-group">
+          <button type="button" class="btn-secondary" id="resetPadBtn">
+            Reset Pad Default
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-feedback">
+        <span id="feedbackMessage">Tip: Click any pad or use the selector above to rename or assign custom audio.</span>
+        <span class="shortcut-hint">
+          Shortcuts: <kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd>, <kbd>-</kbd>, <kbd>=</kbd> &amp; <kbd>Numpad 0–9</kbd>
+        </span>
+      </div>
+    </section>
+
+    <!-- LIVE / BROADCAST PANEL -->
+    <section class="settings-panel" aria-label="Live and broadcast settings">
+      <div class="settings-header">
+        <h2>Go Live &amp; Share With Others</h2>
+        <span id="shareStatus">Broadcast is off. Sounds only play on your speakers.</span>
+      </div>
+
+      <div class="share-grid">
+        <div class="field-group">
+          <label for="broadcastSelect">Broadcast Output (virtual cable)</label>
+          <select id="broadcastSelect" class="select-input">
+            <option value="">Off (speakers only)</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <button type="button" class="btn-secondary" id="detectDevicesBtn">Detect Devices</button>
+        </div>
+        <div class="field-group">
+          <label class="toggle-row"><input type="checkbox" id="monitorToggle" checked /> Hear it myself</label>
+        </div>
+        <div class="field-group">
+          <label class="toggle-row"><input type="checkbox" id="micToggle" /> Mix in my microphone</label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <button type="button" class="btn-primary" id="popoutBtn">Pop Out Mini Board (stays on top of other apps)</button>
+      </div>
+
+      <div class="share-help">
+        <b>How others hear it:</b> a web page can't talk into another app's microphone directly, so Neon Pulse sends its sound to a <b>virtual audio cable</b> that Discord, Zoom, Teams, OBS or your game uses as its mic.
+        <ol>
+          <li>Install a virtual cable: <b>VB-CABLE</b> (Windows) or <b>BlackHole</b> (Mac).</li>
+          <li>Click <b>Detect Devices</b> and pick the cable as the Broadcast Output (on Windows it shows as "CABLE Input").</li>
+          <li>In your call app, set the microphone to the other end of the cable (on Windows, "CABLE Output").</li>
+          <li>Turn on <b>Mix in my microphone</b> so people still hear your voice along with the sounds.</li>
+          <li>Click <b>Pop Out Mini Board</b> to keep the pads floating above your game or call. Works in Chrome / Edge on desktop.</li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /* ==========================================================================
+       1. PAD CONFIGURATION (COLORS, LABELS, KEY MAPPINGS & DEFAULT SOUNDS)
+       Modify this array to change pad names, neon hex colors, or key shortcuts.
+       ========================================================================== */
+    const PAD_CONFIGS = [
+      {
+        id: 0,
+        defaultName: '808 Sub Kick',
+        category: 'Drums',
+        color: '#ff2a85', // Neon Pink
+        keyLabel: '1',
+        codes: ['Digit1', 'Numpad1'],
+        keys: ['1'],
+        synthType: 'kick'
+      },
+      {
+        id: 1,
+        defaultName: 'Crisp Snare',
+        category: 'Drums',
+        color: '#ff6b00', // Neon Orange
+        keyLabel: '2',
+        codes: ['Digit2', 'Numpad2'],
+        keys: ['2'],
+        synthType: 'snare'
+      },
+      {
+        id: 2,
+        defaultName: 'Studio Clap',
+        category: 'Drums',
+        color: '#ffd60a', // Neon Yellow
+        keyLabel: '3',
+        codes: ['Digit3', 'Numpad3'],
+        keys: ['3'],
+        synthType: 'clap'
+      },
+      {
+        id: 3,
+        defaultName: 'Closed Hat',
+        category: 'Drums',
+        color: '#70e000', // Neon Lime
+        keyLabel: '4',
+        codes: ['Digit4', 'Numpad4'],
+        keys: ['4'],
+        synthType: 'closedHat'
+      },
+      {
+        id: 4,
+        defaultName: 'Open Shimmer Hat',
+        category: 'Drums',
+        color: '#00f5d4', // Neon Cyan-Mint
+        keyLabel: '5',
+        codes: ['Digit5', 'Numpad5'],
+        keys: ['5'],
+        synthType: 'openHat'
+      },
+      {
+        id: 5,
+        defaultName: 'Electro Tom',
+        category: 'Drums',
+        color: '#00bbf9', // Neon Sky Blue
+        keyLabel: '6',
+        codes: ['Digit6', 'Numpad6'],
+        keys: ['6'],
+        synthType: 'tom'
+      },
+      {
+        id: 6,
+        defaultName: 'Reese Bass Pluck',
+        category: 'Synth',
+        color: '#4361ee', // Electric Indigo
+        keyLabel: '7',
+        codes: ['Digit7', 'Numpad7'],
+        keys: ['7'],
+        synthType: 'bass'
+      },
+      {
+        id: 7,
+        defaultName: 'Neon Minor Chord',
+        category: 'Synth',
+        color: '#9d4edd', // Neon Purple
+        keyLabel: '8',
+        codes: ['Digit8', 'Numpad8'],
+        keys: ['8'],
+        synthType: 'chord'
+      },
+      {
+        id: 8,
+        defaultName: 'Cyber Lead Stab',
+        category: 'Synth',
+        color: '#f72585', // Neon Magenta
+        keyLabel: '9',
+        codes: ['Digit9', 'Numpad9'],
+        keys: ['9'],
+        synthType: 'lead'
+      },
+      {
+        id: 9,
+        defaultName: 'Laser Blaster',
+        category: 'FX',
+        color: '#00f59b', // Neon Emerald
+        keyLabel: '0',
+        codes: ['Digit0', 'Numpad0'],
+        keys: ['0'],
+        synthType: 'laser'
+      },
+      {
+        id: 10,
+        defaultName: 'Hyper Riser',
+        category: 'FX',
+        color: '#ff9e00', // Neon Amber
+        keyLabel: '-',
+        codes: ['Minus'],
+        keys: ['-'],
+        synthType: 'riser'
+      },
+      {
+        id: 11,
+        defaultName: 'Arcade Powerup',
+        category: 'FX',
+        color: '#38b6ff', // Electric Cyan
+        keyLabel: '=',
+        codes: ['Equal'],
+        keys: ['='],
+        synthType: 'coin'
+      }
+    ];
+
+    /* ==========================================================================
+       2. SESSION STATE (IN-MEMORY ONLY, NO LOCALSTORAGE)
+       Stores current pad names, custom decoded AudioBuffers, and active nodes.
+       ========================================================================== */
+    const sessionPads = PAD_CONFIGS.map((cfg) => ({
+      ...cfg,
+      name: cfg.defaultName,
+      customBuffer: null,
+      customFileName: null
+    }));
+
+    let audioCtx = null;
+    let masterGain = null;
+    let noiseBuffer = null;
+    let masterVolumeValue = 0.85;
+    let selectedPadIndex = 0;
+
+    // Broadcast / live routing state
+    let monitorGain = null;     // lets you mute your own speakers while still broadcasting
+    let streamDest = null;      // MediaStream destination that feeds the virtual cable
+    let broadcastEl = null;     // hidden <audio> element routed to the chosen output device
+    let micStream = null;
+    let micSource = null;
+    let pipWindow = null;
+
+    // Track active sound stoppers so "Stop All" halts all overlapping voices immediately
+    const activeVoiceStoppers = new Set();
+
+    /* ==========================================================================
+       3. WEB AUDIO API INITIALIZATION & AUTOPLAY RESTRICTION HANDLER
+       Initializes or resumes the AudioContext on the first user gesture.
+       ========================================================================== */
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+
+        masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(masterVolumeValue, audioCtx.currentTime);
+
+        // Graph: masterGain -> monitorGain -> speakers   (what you hear)
+        //        masterGain -> streamDest -> <audio> -> virtual cable (what others hear)
+        monitorGain = audioCtx.createGain();
+        monitorGain.gain.setValueAtTime(document.getElementById('monitorToggle').checked ? 1 : 0, audioCtx.currentTime);
+        masterGain.connect(monitorGain);
+        monitorGain.connect(audioCtx.destination);
+
+        streamDest = audioCtx.createMediaStreamDestination();
+        masterGain.connect(streamDest);
+        broadcastEl = new Audio();
+        broadcastEl.srcObject = streamDest.stream;
+
+        // Keep audio alive when the tab is in the background
+        audioCtx.addEventListener('statechange', () => {
+          if (audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+          updateAudioStatusUI();
+        });
+
+        // Pre-generate a 2-second white noise buffer for snare, clap, and hi-hats
+        noiseBuffer = createWhiteNoiseBuffer(audioCtx, 2.0);
+      }
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      updateAudioStatusUI();
+      return audioCtx;
+    }
+
+    function createWhiteNoiseBuffer(ctx, durationSeconds) {
+      const bufferSize = Math.floor(ctx.sampleRate * durationSeconds);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      return buffer;
+    }
+
+    function updateAudioStatusUI() {
+      const statusText = document.getElementById('audioStatusText');
+      if (!audioCtx) {
+        statusText.textContent = 'Ready';
+      } else if (audioCtx.state === 'running') {
+        statusText.textContent = 'Audio Active';
+      } else {
+        statusText.textContent = 'Tap to Wake';
+      }
+    }
+
+    /* ==========================================================================
+       4. WEB AUDIO API SYNTHESIZER VOICES (12 DISTINCT SOUNDS)
+       Each voice connects to a voiceGain -> masterGain so overlapping sounds work
+       cleanly and can be cancelled any time via "Stop All".
+       ========================================================================== */
+    function registerVoice(voiceGain, nodesToStop, durationSeconds) {
+      let stopped = false;
+
+      const stopVoice = () => {
+        if (stopped) return;
+        stopped = true;
+        activeVoiceStoppers.delete(stopVoice);
+        try {
+          const now = audioCtx ? audioCtx.currentTime : 0;
+          voiceGain.gain.cancelScheduledValues(now);
+          voiceGain.gain.setValueAtTime(0.0001, now);
+          nodesToStop.forEach((node) => {
+            try { node.stop(); } catch (_) {}
+            try { node.disconnect(); } catch (_) {}
+          });
+          voiceGain.disconnect();
+        } catch (_) {}
+      };
+
+      activeVoiceStoppers.add(stopVoice);
+      setTimeout(() => {
+        activeVoiceStoppers.delete(stopVoice);
+      }, (durationSeconds + 0.15) * 1000);
+    }
+
+    function playSynthesizedSound(synthType) {
+      const ctx = ensureAudioContext();
+      const now = ctx.currentTime;
+      const voiceGain = ctx.createGain();
+      voiceGain.connect(masterGain);
+
+      switch (synthType) {
+        // 1. 808 SUB KICK: Punchy pitch drop sine + transient click
+        case 'kick': {
+          const osc = ctx.createOscillator();
+          const clickOsc = ctx.createOscillator();
+          const clickGain = ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(155, now);
+          osc.frequency.exponentialRampToValueAtTime(42, now + 0.09);
+          osc.frequency.exponentialRampToValueAtTime(28, now + 0.48);
+
+          voiceGain.gain.setValueAtTime(1.0, now);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+          clickOsc.type = 'triangle';
+          clickOsc.frequency.setValueAtTime(850, now);
+          clickOsc.frequency.exponentialRampToValueAtTime(120, now + 0.025);
+          clickGain.gain.setValueAtTime(0.35, now);
+          clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+
+          osc.connect(voiceGain);
+          clickOsc.connect(clickGain);
+          clickGain.connect(voiceGain);
+
+          osc.start(now);
+          clickOsc.start(now);
+          osc.stop(now + 0.52);
+          clickOsc.stop(now + 0.03);
+
+          registerVoice(voiceGain, [osc, clickOsc], 0.52);
+          break;
+        }
+
+        // 2. CRISP SNARE: Body triangle oscillator + high-passed noise snap
+        case 'snare': {
+          const bodyOsc = ctx.createOscillator();
+          const bodyGain = ctx.createGain();
+          bodyOsc.type = 'triangle';
+          bodyOsc.frequency.setValueAtTime(210, now);
+          bodyOsc.frequency.exponentialRampToValueAtTime(105, now + 0.11);
+
+          bodyGain.gain.setValueAtTime(0.65, now);
+          bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+          const noise = ctx.createBufferSource();
+          noise.buffer = noiseBuffer;
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'highpass';
+          filter.frequency.setValueAtTime(950, now);
+
+          const noiseGain = ctx.createGain();
+          noiseGain.gain.setValueAtTime(0.75, now);
+          noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+
+          bodyOsc.connect(bodyGain);
+          bodyGain.connect(voiceGain);
+          noise.connect(filter);
+          filter.connect(noiseGain);
+          noiseGain.connect(voiceGain);
+
+          bodyOsc.start(now);
+          noise.start(now);
+          bodyOsc.stop(now + 0.16);
+          noise.stop(now + 0.25);
+
+          registerVoice(voiceGain, [bodyOsc, noise], 0.26);
+          break;
+        }
+
+        // 3. STUDIO CLAP: Multi-burst bandpass filtered noise
+        case 'clap': {
+          const noise = ctx.createBufferSource();
+          noise.buffer = noiseBuffer;
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1350, now);
+          filter.Q.setValueAtTime(1.8, now);
+
+          // Triple micro-burst envelope for realistic handclap texture
+          voiceGain.gain.setValueAtTime(0.001, now);
+          voiceGain.gain.linearRampToValueAtTime(0.85, now + 0.004);
+          voiceGain.gain.exponentialRampToValueAtTime(0.15, now + 0.014);
+          voiceGain.gain.setValueAtTime(0.85, now + 0.015);
+          voiceGain.gain.exponentialRampToValueAtTime(0.15, now + 0.026);
+          voiceGain.gain.setValueAtTime(0.9, now + 0.027);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+
+          noise.connect(filter);
+          filter.connect(voiceGain);
+
+          noise.start(now);
+          noise.stop(now + 0.28);
+
+          registerVoice(voiceGain, [noise], 0.28);
+          break;
+        }
+
+        // 4. CLOSED HI-HAT: Tight high-passed metallic noise tick
+        case 'closedHat': {
+          const noise = ctx.createBufferSource();
+          noise.buffer = noiseBuffer;
+
+          const hp = ctx.createBiquadFilter();
+          hp.type = 'highpass';
+          hp.frequency.setValueAtTime(7500, now);
+
+          voiceGain.gain.setValueAtTime(0.65, now);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+
+          noise.connect(hp);
+          hp.connect(voiceGain);
+
+          noise.start(now);
+          noise.stop(now + 0.075);
+
+          registerVoice(voiceGain, [noise], 0.08);
+          break;
+        }
+
+        // 5. OPEN SHIMMER HAT: Metallic detuned square cluster + airy noise
+        case 'openHat': {
+          const noise = ctx.createBufferSource();
+          noise.buffer = noiseBuffer;
+
+          const bandpass = ctx.createBiquadFilter();
+          bandpass.type = 'bandpass';
+          bandpass.frequency.setValueAtTime(9200, now);
+          bandpass.Q.setValueAtTime(1.4, now);
+
+          voiceGain.gain.setValueAtTime(0.6, now);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+          noise.connect(bandpass);
+          bandpass.connect(voiceGain);
+
+          noise.start(now);
+          noise.stop(now + 0.44);
+
+          registerVoice(voiceGain, [noise], 0.45);
+          break;
+        }
+
+        // 6. ELECTRO TOM: Resonant mid-low synth percussion sweep
+        case 'tom': {
+          const osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(240, now);
+          osc.frequency.exponentialRampToValueAtTime(78, now + 0.28);
+
+          voiceGain.gain.setValueAtTime(0.85, now);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+          osc.connect(voiceGain);
+          osc.start(now);
+          osc.stop(now + 0.34);
+
+          registerVoice(voiceGain, [osc], 0.35);
+          break;
+        }
+
+        // 7. REESE BASS PLUCK: Dual detuned sawtooth through snappy lowpass filter
+        case 'bass': {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          osc1.type = 'sawtooth';
+          osc2.type = 'sawtooth';
+
+          // F1 deep bass note (approx 87.31 Hz)
+          osc1.frequency.setValueAtTime(87.31, now);
+          osc2.frequency.setValueAtTime(87.95, now);
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.Q.setValueAtTime(5.0, now);
+          filter.frequency.setValueAtTime(1600, now);
+          filter.frequency.exponentialRampToValueAtTime(140, now + 0.38);
+
+          voiceGain.gain.setValueAtTime(0.45, now);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+          osc1.connect(filter);
+          osc2.connect(filter);
+          filter.connect(voiceGain);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 0.47);
+          osc2.stop(now + 0.47);
+
+          registerVoice(voiceGain, [osc1, osc2], 0.48);
+          break;
+        }
+
+        // 8. NEON MINOR CHORD: Lush 4-note synth wave chord stab (C Minor 9)
+        case 'chord': {
+          const freqs = [261.63, 311.13, 392.00, 587.33]; // C4, Eb4, G4, D5
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(3200, now);
+          filter.frequency.exponentialRampToValueAtTime(600, now + 0.65);
+
+          voiceGain.gain.setValueAtTime(0.001, now);
+          voiceGain.gain.linearRampToValueAtTime(0.22, now + 0.02);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+          filter.connect(voiceGain);
+
+          const oscNodes = freqs.map((freq, idx) => {
+            const osc = ctx.createOscillator();
+            osc.type = idx % 2 === 0 ? 'sawtooth' : 'triangle';
+            osc.frequency.setValueAtTime(freq, now);
+            osc.detune.setValueAtTime((idx - 1.5) * 7, now);
+            osc.connect(filter);
+            osc.start(now);
+            osc.stop(now + 0.72);
+            return osc;
+          });
+
+          registerVoice(voiceGain, oscNodes, 0.74);
+          break;
+        }
+
+        // 9. CYBER LEAD STAB: Vibrant FM-style fifth synth lead hit
+        case 'lead': {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          osc1.type = 'square';
+          osc2.type = 'sawtooth';
+
+          osc1.frequency.setValueAtTime(523.25, now); // C5
+          osc2.frequency.setValueAtTime(783.99, now); // G5
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(2200, now);
+          filter.Q.setValueAtTime(2.0, now);
+
+          voiceGain.gain.setValueAtTime(0.38, now);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+
+          osc1.connect(filter);
+          osc2.connect(filter);
+          filter.connect(voiceGain);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 0.38);
+          osc2.stop(now + 0.38);
+
+          registerVoice(voiceGain, [osc1, osc2], 0.4);
+          break;
+        }
+
+        // 10. LASER BLASTER: Fast sci-fi pitch sweep with resonant filter
+        case 'laser': {
+          const osc = ctx.createOscillator();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(1950, now);
+          osc.frequency.exponentialRampToValueAtTime(95, now + 0.24);
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.Q.setValueAtTime(8, now);
+          filter.frequency.setValueAtTime(3600, now);
+          filter.frequency.exponentialRampToValueAtTime(300, now + 0.24);
+
+          voiceGain.gain.setValueAtTime(0.5, now);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+          osc.connect(filter);
+          filter.connect(voiceGain);
+
+          osc.start(now);
+          osc.stop(now + 0.26);
+
+          registerVoice(voiceGain, [osc], 0.28);
+          break;
+        }
+
+        // 11. HYPER RISER: Dramatic upward pitch & filter sweep FX
+        case 'riser': {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          osc1.type = 'sawtooth';
+          osc2.type = 'sawtooth';
+
+          osc1.frequency.setValueAtTime(160, now);
+          osc1.frequency.exponentialRampToValueAtTime(1250, now + 0.75);
+          osc2.frequency.setValueAtTime(164, now);
+          osc2.frequency.exponentialRampToValueAtTime(1280, now + 0.75);
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.Q.setValueAtTime(6, now);
+          filter.frequency.setValueAtTime(300, now);
+          filter.frequency.exponentialRampToValueAtTime(4800, now + 0.72);
+
+          voiceGain.gain.setValueAtTime(0.02, now);
+          voiceGain.gain.linearRampToValueAtTime(0.42, now + 0.65);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.82);
+
+          osc1.connect(filter);
+          osc2.connect(filter);
+          filter.connect(voiceGain);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 0.84);
+          osc2.stop(now + 0.84);
+
+          registerVoice(voiceGain, [osc1, osc2], 0.85);
+          break;
+        }
+
+        // 12. ARCADE POWERUP: Classic 2-step retro coin/powerup arpeggio
+        case 'coin':
+        default: {
+          const osc = ctx.createOscillator();
+          osc.type = 'square';
+          // B5 -> E6 jump
+          osc.frequency.setValueAtTime(987.77, now);
+          osc.frequency.setValueAtTime(1318.51, now + 0.075);
+
+          voiceGain.gain.setValueAtTime(0.32, now);
+          voiceGain.gain.setValueAtTime(0.32, now + 0.08);
+          voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+          osc.connect(voiceGain);
+          osc.start(now);
+          osc.stop(now + 0.44);
+
+          registerVoice(voiceGain, [osc], 0.45);
+          break;
+        }
+      }
+    }
+
+    // Plays a custom uploaded AudioBuffer stored in memory
+    function playCustomBuffer(buffer) {
+      const ctx = ensureAudioContext();
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+
+      const voiceGain = ctx.createGain();
+      voiceGain.gain.setValueAtTime(1.0, ctx.currentTime);
+
+      source.connect(voiceGain);
+      voiceGain.connect(masterGain);
+
+      source.start(0);
+      registerVoice(voiceGain, [source], buffer.duration);
+    }
+
+    /* ==========================================================================
+       5. TRIGGER PAD PLAYBACK & VISUAL ANIMATION
+       ========================================================================== */
+    const padElements = [];
+    const padTimers = new Map();
+
+    function triggerPad(padIndex, holdVisual = false) {
+      const padData = sessionPads[padIndex];
+      if (!padData) return;
+
+      // Play custom sample if uploaded, otherwise synthesize sound
+      if (padData.customBuffer) {
+        playCustomBuffer(padData.customBuffer);
+      } else {
+        playSynthesizedSound(padData.synthType);
+      }
+
+      // Visual press animation
+      const padEl = padElements[padIndex];
+      if (padEl) {
+        padEl.classList.add('is-active');
+
+        if (padTimers.has(padIndex)) {
+          clearTimeout(padTimers.get(padIndex));
+        }
+
+        if (!holdVisual) {
+          const timer = setTimeout(() => {
+            padEl.classList.remove('is-active');
+          }, 150);
+          padTimers.set(padIndex, timer);
+        }
+      }
+    }
+
+    function releasePadVisual(padIndex) {
+      const padEl = padElements[padIndex];
+      if (padEl) {
+        padEl.classList.remove('is-active');
+      }
+    }
+
+    function stopAllSounds() {
+      activeVoiceStoppers.forEach((stopFn) => stopFn());
+      activeVoiceStoppers.clear();
+      padElements.forEach((el) => el.classList.remove('is-active'));
+      setFeedback('Stopped all active sounds.');
+    }
+
+    /* ==========================================================================
+       6. UI RENDERING & INTERACTION BINDING
+       ========================================================================== */
+    const padGridEl = document.getElementById('padGrid');
+    const padSelectEl = document.getElementById('padSelect');
+    const padNameInputEl = document.getElementById('padNameInput');
+    const padAudioInputEl = document.getElementById('padAudioInput');
+    const fileLabelTextEl = document.getElementById('fileLabelText');
+    const resetPadBtnEl = document.getElementById('resetPadBtn');
+    const feedbackMessageEl = document.getElementById('feedbackMessage');
+
+    function buildPadsUI() {
+      padGridEl.innerHTML = '';
+      padSelectEl.innerHTML = '';
+      padElements.length = 0;
+
+      sessionPads.forEach((pad, index) => {
+        // Create Pad Button
+        const padBtn = document.createElement('button');
+        padBtn.type = 'button';
+        padBtn.className = 'sound-pad';
+        padBtn.style.setProperty('--pad-color', pad.color);
+        padBtn.setAttribute('aria-label', `${pad.name}, shortcut key ${pad.keyLabel}`);
+
+        const isCustom = Boolean(pad.customBuffer);
+
+        padBtn.innerHTML = `
+          <div class="pad-top">
+            <span class="pad-key">${pad.keyLabel}</span>
+            <div class="pad-badges">
+              <span class="pad-source-tag ${isCustom ? 'custom' : ''}" id="padTag-${index}">
+                ${isCustom ? 'Custom' : pad.category}
+              </span>
+            </div>
+          </div>
+          <div class="pad-bottom">
+            <div class="pad-name" id="padTitle-${index}">${escapeHtml(pad.name)}</div>
+            <div class="pad-category">
+              <span id="padSub-${index}">${isCustom ? escapeHtml(pad.customFileName || 'Sample') : 'Web Audio Synth'}</span>
+            </div>
+            <div class="pad-led-bar"></div>
+          </div>
+        `;
+
+        // Use pointerdown for instant zero-latency response on both touch & mouse
+        padBtn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          triggerPad(index, true);
+          selectPadForEditing(index, false);
+        });
+
+        padBtn.addEventListener('pointerup', () => releasePadVisual(index));
+        padBtn.addEventListener('pointerleave', () => releasePadVisual(index));
+        padBtn.addEventListener('pointercancel', () => releasePadVisual(index));
+
+        padGridEl.appendChild(padBtn);
+        padElements.push(padBtn);
+
+        // Populate Pad Selector Dropdown
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `Pad ${index + 1} [Key ${pad.keyLabel}] — ${pad.name}`;
+        padSelectEl.appendChild(option);
+      });
+
+      syncSettingsForm();
+    }
+
+    function updateSinglePadCard(index) {
+      const pad = sessionPads[index];
+      const titleEl = document.getElementById(`padTitle-${index}`);
+      const tagEl = document.getElementById(`padTag-${index}`);
+      const subEl = document.getElementById(`padSub-${index}`);
+      const isCustom = Boolean(pad.customBuffer);
+
+      if (titleEl) titleEl.textContent = pad.name;
+      if (tagEl) {
+        tagEl.textContent = isCustom ? 'Custom' : pad.category;
+        tagEl.classList.toggle('custom', isCustom);
+      }
+      if (subEl) {
+        subEl.textContent = isCustom ? (pad.customFileName || 'Custom Audio') : 'Web Audio Synth';
+      }
+
+      // Also update dropdown option label
+      const opt = padSelectEl.options[index];
+      if (opt) {
+        opt.textContent = `Pad ${index + 1} [Key ${pad.keyLabel}] — ${pad.name}`;
+      }
+    }
+
+    function selectPadForEditing(index, focusInput = false) {
+      selectedPadIndex = index;
+      padSelectEl.value = String(index);
+      syncSettingsForm();
+      if (focusInput) {
+        padNameInputEl.focus();
+      }
+    }
+
+    function syncSettingsForm() {
+      const pad = sessionPads[selectedPadIndex];
+      if (!pad) return;
+
+      padNameInputEl.value = pad.name;
+      fileLabelTextEl.textContent = pad.customFileName
+        ? `Loaded: ${pad.customFileName}`
+        : 'Upload Audio File...';
+
+      const isModified = pad.name !== pad.defaultName || Boolean(pad.customBuffer);
+      resetPadBtnEl.disabled = !isModified;
+    }
+
+    function setFeedback(msg) {
+      feedbackMessageEl.textContent = msg;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch]));
+    }
+
+    /* ==========================================================================
+       7. KEYBOARD SHORTCUT HANDLERS (1-9, 0, -, = AND NUMPAD 0-9)
+       - Ignores key repeat when held down
+       - Ignores key presses when typing in an input/textarea
+       ========================================================================== */
+    function isTypingInField(target) {
+      if (!target) return false;
+      const tag = target.tagName;
+      return (
+        tag === 'INPUT' && (target.type === 'text' || target.type === 'search' || target.type === 'password') ||
+        tag === 'TEXTAREA' ||
+        target.isContentEditable
+      );
+    }
+
+    function findPadIndexByKeyEvent(e) {
+      return sessionPads.findIndex(
+        (p) => p.codes.includes(e.code) || p.keys.includes(e.key)
+      );
+    }
+
+    window.addEventListener('keydown', (e) => {
+      // Do not trigger shortcuts while typing in text fields (e.g., rename input)
+      if (isTypingInField(e.target)) return;
+
+      // Ignore key repeat when a key is held down
+      if (e.repeat) return;
+
+      const padIndex = findPadIndexByKeyEvent(e);
+      if (padIndex !== -1) {
+        e.preventDefault();
+        triggerPad(padIndex, true);
+        selectPadForEditing(padIndex, false);
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const padIndex = findPadIndexByKeyEvent(e);
+      if (padIndex !== -1) {
+        releasePadVisual(padIndex);
+      }
+    });
+
+    /* ==========================================================================
+       8. MASTER CONTROLS & CUSTOM UPLOAD / RENAME LISTENERS
+       ========================================================================== */
+    // Master Volume Slider
+    const masterVolumeSlider = document.getElementById('masterVolume');
+    const volumeValueLabel = document.getElementById('volumeValue');
+
+    masterVolumeSlider.addEventListener('input', (e) => {
+      const pct = Number(e.target.value);
+      masterVolumeValue = pct / 100;
+      volumeValueLabel.textContent = `${pct}%`;
+
+      if (masterGain && audioCtx) {
+        masterGain.gain.setTargetAtTime(masterVolumeValue, audioCtx.currentTime, 0.015);
+      }
+    });
+
+    // Stop All Button
+    document.getElementById('stopAllBtn').addEventListener('click', () => {
+      stopAllSounds();
+    });
+
+    // Pad Selector Dropdown Change
+    padSelectEl.addEventListener('change', (e) => {
+      selectedPadIndex = Number(e.target.value);
+      syncSettingsForm();
+      setFeedback(`Editing Pad ${selectedPadIndex + 1} [Key ${sessionPads[selectedPadIndex].keyLabel}].`);
+    });
+
+    // Live Rename Input
+    padNameInputEl.addEventListener('input', (e) => {
+      const newName = e.target.value.trim() || sessionPads[selectedPadIndex].defaultName;
+      sessionPads[selectedPadIndex].name = newName;
+      updateSinglePadCard(selectedPadIndex);
+      syncSettingsForm();
+    });
+
+    // Custom Audio File Upload (MP3 / WAV / OGG)
+    padAudioInputEl.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      const targetIndex = selectedPadIndex;
+      const targetPad = sessionPads[targetIndex];
+      setFeedback(`Decoding "${file.name}" for Pad ${targetIndex + 1}...`);
+
+      try {
+        const ctx = ensureAudioContext();
+        const arrayBuffer = await file.arrayBuffer();
+        const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+        targetPad.customBuffer = decodedBuffer;
+        targetPad.customFileName = file.name;
+
+        // If the pad still has its default name, automatically give it the clean file name
+        if (targetPad.name === targetPad.defaultName) {
+          const cleanName = file.name.replace(/\.[^/.]+$/, '').slice(0, 22);
+          if (cleanName) {
+            targetPad.name = cleanName;
+          }
+        }
+
+        updateSinglePadCard(targetIndex);
+        syncSettingsForm();
+        setFeedback(`Loaded "${file.name}" onto Pad ${targetIndex + 1} [Key ${targetPad.keyLabel}].`);
+        triggerPad(targetIndex, false);
+      } catch (err) {
+        setFeedback(`Could not decode "${file.name}". Please choose a valid MP3 or WAV audio file.`);
+      } finally {
+        padAudioInputEl.value = '';
+      }
+    });
+
+    // Reset Selected Pad to Default Synth Sound & Name
+    resetPadBtnEl.addEventListener('click', () => {
+      const pad = sessionPads[selectedPadIndex];
+      pad.name = pad.defaultName;
+      pad.customBuffer = null;
+      pad.customFileName = null;
+
+      updateSinglePadCard(selectedPadIndex);
+      syncSettingsForm();
+      setFeedback(`Reset Pad ${selectedPadIndex + 1} back to default "${pad.defaultName}".`);
+    });
+
+    /* ==========================================================================
+       9. BACKGROUND PLAYBACK, BROADCAST TO OTHERS & POP-OUT MINI BOARD
+       ========================================================================== */
+    const broadcastSelectEl = document.getElementById('broadcastSelect');
+    const monitorToggleEl = document.getElementById('monitorToggle');
+    const micToggleEl = document.getElementById('micToggle');
+    const shareStatusEl = document.getElementById('shareStatus');
+    const popoutBtnEl = document.getElementById('popoutBtn');
+
+    function setShareStatus(msg) { shareStatusEl.textContent = msg; }
+
+    // Resume audio whenever the tab comes back or is hidden (browsers sometimes suspend it)
+    document.addEventListener('visibilitychange', () => {
+      if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+      updateAudioStatusUI();
+    });
+
+    // Show a media-session entry so the OS treats the tab as an active audio source
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: 'Neon Pulse Soundboard', artist: 'Live' });
+      } catch (_) {}
+    }
+
+    async function populateOutputDevices(askPermission) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        setShareStatus('This browser cannot list audio devices. Try Chrome or Edge on desktop.');
+        return;
+      }
+      if (askPermission) {
+        try {
+          // Browsers hide device names until mic permission is granted once
+          const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+          tmp.getTracks().forEach((t) => t.stop());
+        } catch (_) {
+          setShareStatus('Mic permission was denied, so device names may be hidden.');
+        }
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const outputs = devices.filter((d) => d.kind === 'audiooutput');
+      const previous = broadcastSelectEl.value;
+      broadcastSelectEl.innerHTML = '<option value="">Off (speakers only)</option>';
+      outputs.forEach((d, i) => {
+        const opt = document.createElement('option');
+        opt.value = d.deviceId;
+        opt.textContent = d.label || `Output device ${i + 1}`;
+        broadcastSelectEl.appendChild(opt);
+      });
+      if ([...broadcastSelectEl.options].some((o) => o.value === previous)) {
+        broadcastSelectEl.value = previous;
+      }
+      setShareStatus(`Found ${outputs.length} output device${outputs.length === 1 ? '' : 's'}. Pick your virtual cable.`);
+    }
+
+    async function applyBroadcastDevice() {
+      ensureAudioContext();
+      const id = broadcastSelectEl.value;
+
+      if (!id) {
+        broadcastEl.pause();
+        if (micToggleEl.checked) { micToggleEl.checked = false; setMicMix(false); }
+        setShareStatus('Broadcast is off. Sounds only play on your speakers.');
+        return;
+      }
+      if (typeof broadcastEl.setSinkId !== 'function') {
+        broadcastSelectEl.value = '';
+        setShareStatus('Your browser cannot choose an output device. Use Chrome or Edge on desktop.');
+        return;
+      }
+      try {
+        await broadcastEl.setSinkId(id);
+        await broadcastEl.play();
+        const label = broadcastSelectEl.options[broadcastSelectEl.selectedIndex].textContent;
+        setShareStatus(`Broadcasting to: ${label}`);
+      } catch (err) {
+        broadcastSelectEl.value = '';
+        setShareStatus('Could not use that device. Check browser permissions and try again.');
+      }
+    }
+
+    async function setMicMix(on) {
+      if (!on) {
+        if (micSource) { try { micSource.disconnect(); } catch (_) {} micSource = null; }
+        if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; }
+        return;
+      }
+      if (!broadcastSelectEl.value) {
+        micToggleEl.checked = false;
+        setShareStatus('Pick a Broadcast Output first, then turn on the mic mix.');
+        return;
+      }
+      try {
+        ensureAudioContext();
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+        micSource = audioCtx.createMediaStreamSource(micStream);
+        // Mic goes to the broadcast only (not your speakers) so you never hear yourself
+        micSource.connect(streamDest);
+        setShareStatus('Broadcasting soundboard + your microphone.');
+      } catch (_) {
+        micToggleEl.checked = false;
+        setShareStatus('Could not access your microphone.');
+      }
+    }
+
+    document.getElementById('detectDevicesBtn').addEventListener('click', () => populateOutputDevices(true));
+    broadcastSelectEl.addEventListener('change', applyBroadcastDevice);
+    micToggleEl.addEventListener('change', (e) => setMicMix(e.target.checked));
+    monitorToggleEl.addEventListener('change', (e) => {
+      ensureAudioContext();
+      monitorGain.gain.setTargetAtTime(e.target.checked ? 1 : 0, audioCtx.currentTime, 0.015);
+    });
+
+    // ---- Pop-out mini board (Document Picture-in-Picture: always on top of other windows) ----
+    async function togglePopout() {
+      if (pipWindow) { pipWindow.close(); return; }
+      if (!('documentPictureInPicture' in window)) {
+        setShareStatus('Pop-out needs Chrome or Edge 116+ on desktop.');
+        return;
+      }
+      ensureAudioContext();
+      try {
+        pipWindow = await window.documentPictureInPicture.requestWindow({ width: 460, height: 420 });
+      } catch (_) {
+        setShareStatus('Could not open the pop-out window.');
+        return;
+      }
+
+      // Copy styles so the pads look identical
+      document.querySelectorAll('style').forEach((st) => pipWindow.document.head.appendChild(st.cloneNode(true)));
+      pipWindow.document.title = 'Neon Pulse';
+
+      const bar = pipWindow.document.createElement('div');
+      bar.className = 'pip-bar';
+      bar.innerHTML = '<span>Neon Pulse mini board</span>';
+      const stopBtn = pipWindow.document.createElement('button');
+      stopBtn.className = 'btn-stop-all';
+      stopBtn.innerHTML = '<span class="stop-square"></span> Stop All';
+      stopBtn.addEventListener('click', stopAllSounds);
+      bar.appendChild(stopBtn);
+
+      // Swap the pad grid into the pop-out and leave a note behind
+      const marker = document.createElement('div');
+      marker.className = 'popout-note';
+      marker.textContent = 'Mini board is popped out. Close it to bring the pads back here.';
+      padGridEl.replaceWith(marker);
+      pipWindow.document.body.append(bar, padGridEl);
+
+      // Forward number-key shortcuts from the pop-out to the main handlers
+      ['keydown', 'keyup'].forEach((type) => {
+        pipWindow.addEventListener(type, (e) => {
+          window.dispatchEvent(new KeyboardEvent(type, { key: e.key, code: e.code, repeat: e.repeat }));
+        });
+      });
+
+      popoutBtnEl.textContent = 'Close Mini Board';
+      pipWindow.addEventListener('pagehide', () => {
+        marker.replaceWith(padGridEl);
+        pipWindow = null;
+        popoutBtnEl.textContent = 'Pop Out Mini Board (stays on top of other apps)';
+      });
+    }
+    popoutBtnEl.addEventListener('click', togglePopout);
+
+    // Desktop app bridge: global hotkeys (Ctrl+Alt+1..0, -, =) work even when the app is in the background
+    if (window.neonBridge) {
+      neonBridge.onPad((i) => triggerPad(i, false));
+      neonBridge.onStopAll(() => stopAllSounds());
+    }
+
+    // Build initial UI on load
+    buildPadsUI();
+    populateOutputDevices(false);
+  </script>
+</body>
+</html>
